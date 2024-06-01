@@ -555,6 +555,51 @@ require('lazy').setup({
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
 
+      local nvim_lsp = require 'lspconfig'
+      local handlers = {
+        ['textDocument/publishDiagnostics'] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
+          virtual_text = true,
+        }),
+      }
+      nvim_lsp.solargraph = {
+        cmd = {
+          --'rvm',
+          --'@global',
+          --'do',
+          'solargraph',
+          'stdio',
+        },
+        filetypes = {
+          'ruby',
+        },
+        flags = {
+          debounce_text_changes = 200,
+        },
+        --on_attach = on_attach,
+        root_dir = nvim_lsp.util.root_pattern('Gemfile', '.git', '.'),
+        capabilities = capabilities,
+        handlers = handlers,
+        settings = {
+          solargraph = {
+            completion = true,
+            autoformat = false,
+            formatting = true,
+            symbols = true,
+            definitions = true,
+            references = true,
+            folding = true,
+            highlights = true,
+            diagnostics = true,
+            rename = true,
+            -- Enable this when running with docker compose
+            --transport = 'external',
+            --externalServer = {
+            --    host = 'localhost',
+            --    port = '7658',
+            --}
+          },
+        },
+      }
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
       --
@@ -577,7 +622,6 @@ require('lazy').setup({
         -- But for many setups, the LSP (`tsserver`) will work just fine
         -- tsserver = {},
         --
-
         lua_ls = {
           -- cmd = {...},
           -- filetypes = { ...},
@@ -704,6 +748,14 @@ require('lazy').setup({
       local luasnip = require 'luasnip'
       luasnip.config.setup {}
 
+      local has_words_before = function()
+        if vim.api.nvim_buf_get_option(0, 'buftype') == 'prompt' then
+          return false
+        end
+        local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+        return col ~= 0 and vim.api.nvim_buf_get_text(0, line - 1, 0, line - 1, col, {})[1]:match '^%s*$' == nil
+      end
+
       cmp.setup {
         snippet = {
           expand = function(args)
@@ -729,7 +781,13 @@ require('lazy').setup({
           -- Accept ([y]es) the completion.
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
-          ['<C-y>'] = cmp.mapping.confirm { select = true },
+          --['<C-y>'] = cmp.mapping.confirm { select = true },
+          ['<CR>'] = cmp.mapping.confirm {
+            behavior = cmp.ConfirmBehavior.Replace,
+            select = true,
+          },
+          ['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 's' }),
+          ['<S-Tab>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 's' }),
 
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
@@ -835,7 +893,7 @@ require('lazy').setup({
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc', 'ruby', 'javascript' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
